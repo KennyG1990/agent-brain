@@ -126,6 +126,10 @@ Good "$count files ready to publish"
 
 # --- 6. commit --------------------------------------------------------------
 Say "[6/7] Saving a snapshot (commit)..."
+$pending = git diff --cached --name-only
+if (-not $pending) {
+  Good "nothing new to save - your previous commit is ready to upload"
+} else {
 git -c user.useConfigOnly=false commit -m "Agent Brain 1.0.0 - cross-agent memory for AI coding assistants" | Out-Null
 if ($LASTEXITCODE -ne 0) {
   Warn "Commit did not run. If git asked for your name/email, set them once:"
@@ -134,9 +138,12 @@ if ($LASTEXITCODE -ne 0) {
   Die "Then run this script again."
 }
 Good "committed"
-git tag -a v1.0.0 -m "1.0.0" 2>$null
+}
+$existing = git tag -l "v1.0.0"
+if ($existing) { Good "tag v1.0.0 already exists (fine - reusing it)" }
+else { git tag -a v1.0.0 -m "1.0.0" 2>$null; Good "tagged v1.0.0" }
 git branch -M main
-Good "tagged v1.0.0 on branch main"
+Good "on branch main"
 
 # --- 7. push ----------------------------------------------------------------
 Say "[7/7] Publishing"
@@ -147,8 +154,14 @@ Write-Host "     Name: agent-brain"
 Write-Host "     Do NOT tick 'Add a README', 'Add .gitignore' or 'Choose a license'"
 Write-Host "     (you already have all three - ticking them causes a conflict)"
 Write-Host ""
-$go = Read-Host "  Created it? Type YES to upload, or anything else to stop here"
-if ($go -ne "YES") {
+Write-Host ""
+Write-Host "  ------------------------------------------------------------"
+# Accept any reasonable yes. Demanding an exact magic string right after telling the
+# user the repo is called "agent-brain" invites them to type the repo name instead -
+# which is exactly what happened the first time.
+$go = Read-Host "  Ready to upload? (y / n)"
+if ($go -notmatch '^\s*(y|yes)\s*$') {
+  Write-Host "  (you typed '$go' - only y or yes uploads)" -ForegroundColor DarkGray
   Write-Host ""
   Good "Stopped. Everything is saved locally. To upload later, run this script again."
   Finish 0
