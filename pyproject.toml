@@ -1,0 +1,97 @@
+﻿[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent-brain"
+version = "1.0.0"
+description = "Cross-agent memory for AI coding assistants. Search every past session and give it back to your agents over MCP."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [{ name = "Ken Smith" }]
+keywords = ["mcp", "claude", "codex", "gemini", "memory", "rag", "knowledge-graph"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Environment :: X11 Applications",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Documentation",
+]
+
+# THE POINT: no runtime dependencies, ever. tests/test_agentbrain.py asserts this by
+# AST-walking every module, and CI runs that test on three operating systems.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["ruff>=0.6", "mypy>=1.11", "pre-commit>=3.8"]
+# graphify is a better graph extractor than the built-in one, but is entirely optional
+graph = ["graphifyy>=0.9"]
+
+[project.urls]
+Homepage = "https://github.com/KennyG1990/agent-brain"
+Issues = "https://github.com/KennyG1990/agent-brain/issues"
+
+[project.scripts]
+agent-brain = "agentbrain.cli:main"
+agent-brain-mcp = "agentbrain.mcp_server:main"
+
+[project.gui-scripts]
+agent-brain-gui = "app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agentbrain"]
+
+# --------------------------------------------------------------------------- #
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["agentbrain", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E", "W",    # pycodestyle
+  "F",         # pyflakes - unused imports/variables, undefined names
+  "I",         # isort
+  "UP",        # pyupgrade
+  "B",         # bugbear - real bug shapes
+  "C4",        # comprehensions
+  "SIM",       # simplify
+  "RUF",       # ruff-specific
+  "S",         # bandit - security
+]
+ignore = [
+  "E501",    # line length is handled by the formatter
+  "S603",    # subprocess without shell - deliberate, and inputs are ours
+  "S607",    # partial executable path - schtasks/launchctl/security are on PATH by design
+  "SIM105",  # contextlib.suppress is not clearer than try/except/pass here
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]                    # asserts are the entire point of a test file
+"agentbrain/shim.py" = ["S310"]         # urllib on a URL we constructed ourselves
+"agentbrain/providers.py" = ["S310"]    # same - the base URL is user-configured, by design
+
+[tool.ruff.format]
+quote-style = "double"
+
+# --------------------------------------------------------------------------- #
+[tool.mypy]
+python_version = "3.10"
+files = ["agentbrain"]
+strict = true
+# tkinter's stubs are incomplete and the GUI is a thin shell over typed modules;
+# checking it produces noise rather than bugs.
+exclude = ["agentbrain/gui.py"]
+warn_unreachable = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true

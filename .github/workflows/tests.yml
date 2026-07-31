@@ -1,0 +1,76 @@
+name: tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    # The zero-dependency promise is only real if it holds on all three.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.10", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: No pip install - that is the point
+        run: python -c "import sys; print(sys.version)"
+
+      - name: Machine check
+        run: python app.py --check
+        continue-on-error: true   # no agent logs on a CI runner; must not crash
+
+      - name: Tests
+        run: python -m unittest discover -s tests -v
+
+      - name: MCP protocol selftest
+        run: python -m agentbrain.mcp_server --selftest
+
+      - name: Secrets audit
+        run: python -m agentbrain.secrets
+
+      - name: Self-check (stdlib linter - runs even with no dev tooling)
+        run: python tools/selfcheck.py
+
+      - name: ASCII-only Windows scripts
+        run: python tools/check_ascii.py
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff mypy
+      - name: ruff
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: mypy (agentbrain only; gui excluded - tkinter stubs are incomplete)
+        run: mypy
+        continue-on-error: true   # advisory until the existing hints are fully typed
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail if anything key-shaped is committed
+        shell: bash
+        run: |
+          if grep -rInE 'sk-(or-v1-|ant-)[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{35}|ghp_[A-Za-z0-9]{20,}' \
+               --include='*.py' --include='*.md' --include='*.json' --include='*.yml' . \
+               | grep -v 'SECRET_RES\|re.compile\|REDACTED\|LEAKCANARY\|CANARY\|test_'; then
+            echo "::error::possible credential committed"
+            exit 1
+          fi
+          echo "clean"

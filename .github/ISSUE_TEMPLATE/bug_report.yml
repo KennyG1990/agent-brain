@@ -1,0 +1,62 @@
+name: Bug report
+description: Something behaved differently than documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before you paste anything:** log output can contain your file paths, project
+        names and conversation titles. Please redact anything you would not post
+        publicly. Never paste an API key — if you think one leaked, rotate it first.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. python -m agentbrain.cli scan
+        2. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: check
+    attributes:
+      label: Output of `python app.py --check`
+      description: >
+        This reports your Python version, whether tkinter is present, your keystore and
+        which agent logs were found. It does not include any key or conversation text.
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows, macOS, Linux]
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Relevant log output
+      description: Redact freely.
+      render: text
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmations
+      options:
+        - label: I ran `python -m unittest discover -s tests` and noted whether it passed
+        - label: I have removed anything private from the text above
+          required: true

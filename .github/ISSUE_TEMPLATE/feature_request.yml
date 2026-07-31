@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest something this should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you hitting?
+      description: The situation, not the solution. It usually suggests a better fix.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you had in mind
+  - type: checkboxes
+    id: deps
+    attributes:
+      label: Constraints this project holds
+      description: >
+        Agent Brain has ZERO runtime dependencies and a test that enforces it. Features
+        needing a pip package have to justify breaking that, or live behind an optional extra.
+      options:
+        - label: This can be built with the Python standard library, or belongs in an optional extra

@@ -1,0 +1,12 @@
+﻿blank_issues_enabled: false
+contact_links:
+  - name: Security issue
+    url: https://github.com/KennyG1990/agent-brain/security/advisories/new
+    about: >
+      Please report privately, not as a public issue - especially anything involving key
+      storage or data leaving the machine.
+  - name: My history is missing / Claude Code deleted it
+    url: https://github.com/anthropics/claude-code/issues/59248
+    about: >
+      Claude Code purges transcripts older than 30 days by default. Set
+      cleanupPeriodDays in ~/.claude/settings.json. Nothing recovers what is already gone.

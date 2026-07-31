@@ -1,0 +1,40 @@
+# ---------------------------------------------------------------------------
+# SECRETS — nothing here ever belongs in the repo.
+# The app itself never writes a key into this folder (it uses the OS keystore and
+# the platform config dir), but these patterns exist so a stray file, an older
+# build, or a hand-edited test never gets committed.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+*.key
+*.pem
+key.dpapi
+settings.json
+secrets.json
+credentials.json
+token.json
+*api_key*
+*apikey*
+
+# Your own brain data — conversation transcripts. Personal and often large.
+vault/
+notes/
+graph/
+.brain/
+*.jsonl
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,62 @@
+# Stops problems leaving your machine, rather than catching them after you've pushed.
+# For a project whose pitch is careful key handling, a post-push secret scan is too late.
+#
+#   pip install pre-commit && pre-commit install
+#   pre-commit run --all-files        # first run, to see where you stand
+#
+# Skip once, deliberately:  git commit --no-verify
+
+repos:
+  # ---- the one that actually matters -------------------------------------- #
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+        name: gitleaks (block secrets BEFORE they leave this machine)
+
+  # ---- correctness --------------------------------------------------------- #
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # ---- hygiene ------------------------------------------------------------- #
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # ---- project-specific invariants ----------------------------------------- #
+  - repo: local
+    hooks:
+      - id: no-third-party-imports
+        name: zero-dependency promise (agentbrain must import stdlib only)
+        entry: python -m unittest tests.test_agentbrain.TestNoThirdPartyImports
+        language: system
+        pass_filenames: false
+        files: ^agentbrain/.*\.py$
+
+      - id: ascii-only-scripts
+        name: ASCII-only in .ps1/.bat (Windows reads BOM-less files as ANSI)
+        entry: python tools/check_ascii.py
+        language: system
+        files: \.(ps1|bat|cmd)$
+
+      - id: security-tests
+        name: security invariants (keys never persist, no upload without consent)
+        entry: python -m unittest tests.test_agentbrain.TestSecretsNeverLeak tests.test_agentbrain.TestConsentGate
+        language: system
+        pass_filenames: false
+        files: ^agentbrain/(secrets|config|consent|providers)\.py$
