@@ -4,7 +4,7 @@
 
 Claude Code, Codex, Cursor and Gemini each keep their own session history, siloed, and
 none of them can read the others'. Agent Brain reads all of them, turns every past
-conversation into a searchable note, and exposes it back to your agents over MCP â€” so
+conversation into a searchable note, and exposes it back to your agents over MCP — so
 Gemini can recall what you and Claude worked out last month, and nobody rebuilds work
 that already exists.
 
@@ -12,9 +12,9 @@ that already exists.
 python -m agentbrain.cli search "how did we set up the printer MCP"
 
 [22.96] I just got a bambu p1s and I want to use an AI 3d model generator...
-   gemini Â· 2026-06-18 Â· notes/i-just-got-a-bambu-p1s-16332cbb.md
+   gemini · 2026-06-18 · notes/i-just-got-a-bambu-p1s-16332cbb.md
 [21.98] research blender MCP and bambu MCP...
-   cowork Â· 2026-06-19 Â· notes/research-blender-mcp-and-bambu-mcp-11a10396.md
+   cowork · 2026-06-19 · notes/research-blender-mcp-and-bambu-mcp-11a10396.md
 ```
 
 <!-- Replace with a real screenshot before announcing this anywhere.
@@ -26,7 +26,7 @@ python -m agentbrain.cli search "how did we set up the printer MCP"
 
 ---
 
-## âš ï¸ Read this first: Claude Code is deleting your history right now
+## Read this first: Claude Code is deleting your history right now
 
 Claude Code purges session transcripts older than **30 days**, every time it starts, by
 default. No warning, no recovery. ([issue #59248](https://github.com/anthropics/claude-code/issues/59248))
@@ -50,8 +50,8 @@ and CI fails the build if that ever stops being true.
 
 On Windows, when installing Python, **tick both boxes**:
 
-- â˜‘ *Add python.exe to PATH*
-- â˜‘ *tcl/tk and IDLE* â€” the window will not open without it
+- **Add python.exe to PATH**
+- **tcl/tk and IDLE** - the window will not open without it
 
 Verify with `python -m tkinter` (a small window should appear) or `python app.py --check`.
 
@@ -97,10 +97,10 @@ python -m agentbrain.cli mcp
 Then add one line to your `CLAUDE.md` / `GEMINI.md` / `AGENTS.md`:
 
 > Before any non-trivial task, call the `agent-brain` `recall` tool to check whether
-> this was already solved in a past session â€” including sessions from other agents.
+> this was already solved in a past session — including sessions from other agents.
 
 Three tools, all local and read-only, all free: **`recall`**, **`read_note`**,
-**`brain_stats`**. You don't run anything â€” your agent spawns the server over stdio
+**`brain_stats`**. You don't run anything — your agent spawns the server over stdio
 and shuts it down afterwards.
 
 ---
@@ -115,13 +115,13 @@ pasted at 2am. So:
   read the disclosure and said yes. `chat()` raises rather than warns.
 - **Choose "local only"** and point it at Ollama and nothing leaves your machine at all.
 - Obvious secrets (API keys, tokens) are pattern-matched out before storage. **Pattern
-  matching is not a guarantee** â€” it will not catch a password you typed in prose.
+  matching is not a guarantee** — it will not catch a password you typed in prose.
 - **Delete everything** from the Data tab or `python -m agentbrain.cli delete`. It shows
   you exactly what and how much, first.
 
 ### Your API key
 
-Stored in the OS keystore â€” **Windows DPAPI**, **macOS Keychain**, **Linux Secret
+Stored in the OS keystore — **Windows DPAPI**, **macOS Keychain**, **Linux Secret
 Service**. If no keystore exists, the app **refuses to save it** and tells you to use an
 environment variable instead, because writing a key in plaintext is worse than being
 inconvenient.
@@ -144,7 +144,7 @@ python -m agentbrain.cli graph --max-spend 5.00       # hard stop at $5
 ```
 
 The cap is checked **before** each request, not after, so it cannot overshoot. Work is
-saved as it goes â€” hitting the cap costs you nothing but the batch in flight, and
+saved as it goes — hitting the cap costs you nothing but the batch in flight, and
 re-running resumes where it stopped.
 
 The model picker ranks by **suitability, not price**, for reasons learned the hard way:
@@ -152,7 +152,7 @@ The model picker ranks by **suitability, not price**, for reasons learned the ha
 | Signal | Weight | Why |
 |---|---|---|
 | No hidden reasoning | **+40** | Models that think by default spend the output budget reasoning and return *nothing* |
-| Structured outputs | +25 / **âˆ’25** | Others wrap JSON in ` ```json ` fences that fail to parse |
+| Structured outputs | +25 / **−25** | Others wrap JSON in ` ```json ` fences that fail to parse |
 | Context / max output | +18 | Bigger chunks, fewer calls |
 | Price | small | Never enough to outrank correctness |
 
@@ -167,7 +167,7 @@ The model picker ranks by **suitability, not price**, for reasons learned the ha
 | Codex | `~/.codex/sessions/**/rollout-*.jsonl` |
 | Gemini / Antigravity | `~/.gemini/**/brain/*/.system_generated/logs/` |
 
-Add anything else in Settings â€” the format is auto-detected.
+Add anything else in Settings — the format is auto-detected.
 
 **ChatGPT is not supported and cannot be.** The desktop app is a browser shell; its
 conversations live on OpenAI's servers with no local transcript. Verified, not assumed.
@@ -182,7 +182,7 @@ agent-brain check
 agent-brain search "your question"
 ```
 
-Still zero runtime dependencies â€” pipx just puts the commands on your PATH.
+Still zero runtime dependencies — pipx just puts the commands on your PATH.
 
 ## Development
 
@@ -204,7 +204,7 @@ pip install pre-commit && pre-commit install
 pre-commit run --all-files                   # ruff, ruff-format, gitleaks, mypy
 ```
 
-**gitleaks runs pre-commit, not just in CI** â€” a post-push secret scan is too late for a
+**gitleaks runs pre-commit, not just in CI** — a post-push secret scan is too late for a
 project whose pitch is careful key handling.
 
 CI runs the suite on Windows, macOS and Linux across Python 3.10 and 3.13, plus ruff,
@@ -225,4 +225,4 @@ Stated rather than discovered:
 
 ## License
 
-MIT â€” see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).

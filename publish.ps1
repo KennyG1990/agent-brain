@@ -75,9 +75,13 @@ if ([string]::IsNullOrWhiteSpace($user)) { Die "No username given." }
 $files = @("pyproject.toml", "CHANGELOG.md", ".github\ISSUE_TEMPLATE\config.yml", "README.md")
 foreach ($f in $files) {
   if (Test-Path $f) {
-    $t = Get-Content $f -Raw
+    # -Encoding UTF8 on BOTH read and write. Without it PS 5.1 reads UTF-8 as ANSI,
+    # and writing back double-encodes every accented character into mojibake. This
+    # corrupted README.md and CHANGELOG.md once already.
+    $t = Get-Content $f -Raw -Encoding UTF8
     if ($t -match "YOURNAME") {
-      ($t -replace "YOURNAME", $user) | Set-Content $f -NoNewline -Encoding UTF8
+      [System.IO.File]::WriteAllText((Resolve-Path $f), ($t -replace "YOURNAME", $user),
+        (New-Object System.Text.UTF8Encoding $false))
       Good "updated $f"
     }
   }

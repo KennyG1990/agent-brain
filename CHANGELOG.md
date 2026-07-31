@@ -5,7 +5,7 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [1.0.0] â€” 2026-07-31
+## [1.0.0] — 2026-07-31
 
 First public release.
 
@@ -15,7 +15,7 @@ First public release.
   Codex and Gemini/Antigravity, on Windows, macOS and Linux. Unknown folders are
   auto-detected by file shape rather than by name.
 - **MCP server** (`recall`, `read_note`, `brain_stats`) so agents can query your whole
-  history â€” including other agents' sessions. Local, read-only, no key, no cost.
+  history — including other agents' sessions. Local, read-only, no key, no cost.
   `agentbrain.cli mcp` prints ready-to-paste config per agent.
 - **BM25 search** over every conversation, with duplicate collapsing and a term-coverage
   floor so a nonsense query returns nothing instead of a confident coincidence.
@@ -24,7 +24,7 @@ First public release.
 - **Desktop app** (tkinter, stdlib) and a **full CLI** that does everything the GUI does.
 - **Export** to Obsidian, JSON or Markdown. **Delete everything**, with a size preview
   and typed confirmation.
-- **Scheduling** for the free scan only â€” schtasks / launchd / systemd / cron.
+- **Scheduling** for the free scan only — schtasks / launchd / systemd / cron.
 
 ### Security & privacy
 
@@ -43,19 +43,19 @@ First public release.
 Several defaults exist because of measured failures, not theory:
 
 - Graph extraction **merges**; it never overwrites. A shrink guard refuses any graph
-  under 80% of the previous node count. (An earlier pipeline went 1,781 nodes â†’ 201 in
+  under 80% of the previous node count. (An earlier pipeline went 1,781 nodes → 201 in
   five weeks while its corpus tripled.)
 - Large notes are **split into linked parts**, because LLM extractors silently drop
   oversized chunks.
 - The model ranking weights *no hidden reasoning* (+40) and *structured outputs*
-  (+25/âˆ’25) above price. Models that think by default can spend the whole output budget
+  (+25/−25) above price. Models that think by default can spend the whole output budget
   reasoning and return nothing at all.
 - Windows scripts are **ASCII-only**. PowerShell 5.1 decodes BOM-less files as ANSI, and
   a UTF-8 em-dash becomes a stray double quote that breaks the entire script.
 
 ### Known limitations
 
-- ChatGPT cannot be ingested â€” the desktop app is a browser shell with no local
+- ChatGPT cannot be ingested — the desktop app is a browser shell with no local
   transcript store. Verified, not assumed.
 - Windows long paths (>260 chars) untested.
 - Windows DPAPI is `ctypes` against documented Win32 calls, exercised on one machine.
