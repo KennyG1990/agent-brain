@@ -98,11 +98,7 @@ def dead_locals(tree: ast.AST) -> list[tuple[int, str, str]]:
     """Assigned, never read, not a throwaway. This is the class of bug that left
     `_finish_note = ''` sitting in graph.py after a refactor."""
     out = []
-    for fn in [
-        n
-        for n in ast.walk(tree)
-        if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)
-    ]:
+    for fn in [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)]:
         assigned: dict[str, int] = {}
         read: set[str] = set()
         for n in ast.walk(fn):
