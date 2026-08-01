@@ -51,13 +51,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install ruff mypy
+      - name: Install pinned lint toolchain
+        run: python -m pip install "ruff==0.8.4" "mypy>=1.11,<2"
       - name: ruff
         run: |
-          ruff check .
-          ruff format --check .
+          python -m ruff check .
+          python -m ruff format --check .
       - name: mypy (agentbrain only; gui excluded - tkinter stubs are incomplete)
-        run: mypy
+        run: python -m mypy
         continue-on-error: true   # advisory until the existing hints are fully typed
 
   secret-scan:
