@@ -30,7 +30,9 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["ruff>=0.6", "mypy>=1.11", "pre-commit>=3.8"]
+# Keep Ruff identical to .pre-commit-config.yaml and CI. Unbounded lint upgrades can
+# introduce new rules and turn unchanged working code red without a source regression.
+dev = ["ruff==0.8.4", "mypy>=1.11,<2", "pre-commit>=3.8"]
 # graphify is a better graph extractor than the built-in one, but is entirely optional
 graph = ["graphifyy>=0.9"]
 
@@ -88,6 +90,8 @@ ignore = [
 "tests/*" = ["S101"]                    # asserts are the entire point of a test file
 "agentbrain/shim.py" = ["S310"]         # urllib on a URL we constructed ourselves
 "agentbrain/providers.py" = ["S310"]    # same - the base URL is user-configured, by design
+# ctypes.Structure requires _fields_ as a class-level mutable descriptor.
+"agentbrain/secrets.py" = ["RUF012"]
 
 [tool.ruff.format]
 quote-style = "double"
