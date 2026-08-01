@@ -291,6 +291,8 @@ def write_note(vault: Path, rec: dict, user: list[str], asst: list[str],
     fm = {"id": rec["id"], "source": rec["source"], "title": rec["title"],
           "project": rec.get("project"), "started": rec.get("started"),
           "ended": rec.get("ended"), "messages": rec.get("messages")}
+    if rec.get("duplicates_merged"):
+        fm["duplicates_merged"] = rec["duplicates_merged"]
     head = ["---"]
     for k, v in fm.items():
         head.append(f'{k}: "{"" if v is None else str(v).replace(chr(34), chr(39))}"')
@@ -340,11 +342,19 @@ def run(vault: Path, srcs: list[Source], max_msg: int = 4000, max_body: int = 60
     brain = vault / ".brain"
     brain.mkdir(parents=True, exist_ok=True)
     man_p, rec_p = brain / "manifest.json", brain / "records.json"
+    is_full_rescan = not man_p.exists()
     manifest = json.loads(man_p.read_text()) if man_p.exists() else {}
-    records = json.loads(rec_p.read_text()) if rec_p.exists() else []
+    records = json.loads(rec_p.read_text()) if (rec_p.exists() and not is_full_rescan) else []
     by_id = {r["id"]: r for r in records}
+    if is_full_rescan:
+        notes_dir = vault / "notes"
+        if notes_dir.exists():
+            for f in notes_dir.glob("*.md"):
+                try: f.unlink()
+                except OSError: pass
     new = skipped = 0
 
+    candidates_list = []
     for src in srcs:
         parser = PARSERS.get(src.kind)
         if not parser:
@@ -373,11 +383,14 @@ def run(vault: Path, srcs: list[Source], max_msg: int = 4000, max_body: int = 60
                 manifest[str(p)] = sig
                 continue
             title = parsed["title"] or (parsed["user"][0][:70] + "..." if parsed["user"] else p.stem)
-            if is_self_referential(title, parsed["user"][0] if parsed["user"] else ""):
+            first_user = parsed["user"][0].strip() if parsed["user"] else ""
+            if is_self_referential(title, first_user):
                 manifest[str(p)] = sig
                 continue
             sid = parsed.get("sid") or hashlib.md5(str(p.resolve()).encode()).hexdigest()[:12]
             label = _source_label(src, parsed.get("cwd"))
+            cwd = parsed.get("cwd") or ""
+            fp = hashlib.md5(f"{first_user}||{cwd}".encode()).hexdigest() if first_user else f"nofp-{sid}"
             rec = {
                 "id": f"{label}-{sid}", "title": title, "source": label,
                 "project": parsed.get("cwd"), "branch": parsed.get("branch"),
@@ -388,13 +401,30 @@ def run(vault: Path, srcs: list[Source], max_msg: int = 4000, max_body: int = 60
                 "tools": sorted(set(parsed["tools"])),
                 "topics": keywords(title + " " + " ".join(parsed["user"][:3])),
             }
-            write_note(vault, rec, parsed["user"], parsed["asst"], max_msg, max_body)
-            by_id[rec["id"]] = rec
-            manifest[str(p)] = sig
-            new += 1
+            candidates_list.append({
+                "path": str(p), "sig": sig, "fp": fp, "rec": rec,
+                "user": parsed["user"], "asst": parsed["asst"]
+            })
+
+    # Deduplicate subagent transcripts sharing the same fingerprint (first_user + cwd)
+    groups: dict[str, list[dict]] = {}
+    for item in candidates_list:
+        groups.setdefault(item["fp"], []).append(item)
+
+    for fp, group in groups.items():
+        # Keep the transcript with the most total messages
+        best = max(group, key=lambda x: x["rec"]["messages"])
+        if len(group) > 1:
+            best["rec"]["duplicates_merged"] = len(group) - 1
+
+        write_note(vault, best["rec"], best["user"], best["asst"], max_msg, max_body)
+        by_id[best["rec"]["id"]] = best["rec"]
+        new += 1
+
+        for item in group:
+            manifest[item["path"]] = item["sig"]
 
     records = list(by_id.values())
     rec_p.write_text(json.dumps(records, indent=2), encoding="utf-8")
     man_p.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    log(f"normalized: {len(records)} conversations ({new} new/changed, {skipped} unchanged)")
     return {"total": len(records), "new": new, "skipped": skipped}
