@@ -90,6 +90,8 @@ ignore = [
 "tests/*" = ["S101"]                    # asserts are the entire point of a test file
 "agentbrain/shim.py" = ["S310"]         # urllib on a URL we constructed ourselves
 "agentbrain/providers.py" = ["S310"]    # same - the base URL is user-configured, by design
+# ctypes.Structure requires _fields_ as a class-level mutable descriptor.
+"agentbrain/secrets.py" = ["RUF012"]
 
 [tool.ruff.format]
 quote-style = "double"
