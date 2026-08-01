@@ -30,7 +30,9 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["ruff>=0.6", "mypy>=1.11", "pre-commit>=3.8"]
+# Keep Ruff identical to .pre-commit-config.yaml and CI. Unbounded lint upgrades can
+# introduce new rules and turn unchanged working code red without a source regression.
+dev = ["ruff==0.8.4", "mypy>=1.11,<2", "pre-commit>=3.8"]
 # graphify is a better graph extractor than the built-in one, but is entirely optional
 graph = ["graphifyy>=0.9"]
 
