@@ -62,7 +62,7 @@ class Visitor(ast.NodeVisitor):
     # ---- real bug shapes ----
     def visit_FunctionDef(self, n):
         for d in n.args.defaults + [x for x in n.args.kw_defaults if x]:
-            if isinstance(d, (ast.List, ast.Dict, ast.Set)):
+            if isinstance(d, ast.List | ast.Dict | ast.Set):
                 self.problems.append(
                     (d.lineno, "B006", f"mutable default in {n.name}() - shared between calls")
                 )
@@ -80,9 +80,9 @@ class Visitor(ast.NodeVisitor):
     def visit_Compare(self, n):
         for op, cmp in zip(n.ops, n.comparators):
             if (
-                isinstance(op, (ast.Is, ast.IsNot))
+                isinstance(op, ast.Is | ast.IsNot)
                 and isinstance(cmp, ast.Constant)
-                and isinstance(cmp.value, (str, int, float))
+                and isinstance(cmp.value, str | int | float)
                 and cmp.value is not None
             ):
                 self.problems.append((n.lineno, "F632", "`is` with a literal - use == "))
@@ -98,7 +98,11 @@ def dead_locals(tree: ast.AST) -> list[tuple[int, str, str]]:
     """Assigned, never read, not a throwaway. This is the class of bug that left
     `_finish_note = ''` sitting in graph.py after a refactor."""
     out = []
-    for fn in [n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]:
+    for fn in [
+        n
+        for n in ast.walk(tree)
+        if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)
+    ]:
         assigned: dict[str, int] = {}
         read: set[str] = set()
         for n in ast.walk(fn):
