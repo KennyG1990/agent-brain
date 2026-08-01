@@ -1,4 +1,4 @@
-﻿# Agent Brain
+# Agent Brain
 
 **Your AI coding assistants forget everything. This remembers it, and gives it back to them.**
 
@@ -16,13 +16,6 @@ python -m agentbrain.cli search "how did we set up the printer MCP"
 [21.98] research blender MCP and bambu MCP...
    cowork · 2026-06-19 · notes/research-blender-mcp-and-bambu-mcp-11a10396.md
 ```
-
-<!-- Replace with a real screenshot before announcing this anywhere.
-     People do not install GUI tools they have not seen.
-       docs/screenshot-home.png   - Home tab, populated, with the "Next:" bar visible
-       docs/screenshot-graph.png  - Graph tab with the model table loaded
-     Keep each under 500KB (the pre-commit large-file hook rejects more). -->
-![Agent Brain](docs/screenshot-home.png)
 
 ---
 

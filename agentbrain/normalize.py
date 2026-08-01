@@ -10,6 +10,7 @@ Handles three on-disk shapes (see sources.py):
   rollout_codex  Codex                     {"type":"response_item","payload":{...}}
   gemini_brain   Gemini / Antigravity      {"source":"USER_EXPLICIT|MODEL", ...}
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -20,13 +21,107 @@ from pathlib import Path
 from .sources import KIND_GEMINI_BRAIN, KIND_JSONL_CLAUDE, KIND_ROLLOUT_CODEX, Source
 
 TOOL_FILE_KEYS = ("file_path", "path", "notebook_path", "filePath", "target_file")
-PATH_RE = re.compile(r"[A-Za-z]:[\\/][^\s\"'<>|]+|/(?:home|Users)/[^\s\"'<>|]+|file:///[^\s\"'<>|]+")
+PATH_RE = re.compile(
+    r"[A-Za-z]:[\\/][^\s\"'<>|]+|/(?:home|Users)/[^\s\"'<>|]+|file:///[^\s\"'<>|]+"
+)
 
-STOP = set("""a an the of to and or for in on at with is are was were be been being this that these those
-it its as by from into out up down off over under your you we our i me my he she they them their but if then
-else so do does did done can could should would will just not no yes new use used using get got make made
-work works working file files run running help need want like about more most some any all each both few
-""".split())
+STOP = set(
+    [
+        "a",
+        "an",
+        "the",
+        "of",
+        "to",
+        "and",
+        "or",
+        "for",
+        "in",
+        "on",
+        "at",
+        "with",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "this",
+        "that",
+        "these",
+        "those",
+        "it",
+        "its",
+        "as",
+        "by",
+        "from",
+        "into",
+        "out",
+        "up",
+        "down",
+        "off",
+        "over",
+        "under",
+        "your",
+        "you",
+        "we",
+        "our",
+        "i",
+        "me",
+        "my",
+        "he",
+        "she",
+        "they",
+        "them",
+        "their",
+        "but",
+        "if",
+        "then",
+        "else",
+        "so",
+        "do",
+        "does",
+        "did",
+        "done",
+        "can",
+        "could",
+        "should",
+        "would",
+        "will",
+        "just",
+        "not",
+        "no",
+        "yes",
+        "new",
+        "use",
+        "used",
+        "using",
+        "get",
+        "got",
+        "make",
+        "made",
+        "work",
+        "works",
+        "working",
+        "file",
+        "files",
+        "run",
+        "running",
+        "help",
+        "need",
+        "want",
+        "like",
+        "about",
+        "more",
+        "most",
+        "some",
+        "any",
+        "all",
+        "each",
+        "both",
+        "few",
+    ]
+)
 
 # Redact obvious secrets so a pasted key never lands in a note or gets sent to an LLM.
 SECRET_RES = [
@@ -37,7 +132,9 @@ SECRET_RES = [
     re.compile(r"AKIA[0-9A-Z]{16}"),
     re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}"),
     re.compile(r"xox[baprs]-[A-Za-z0-9-]{10,}"),
-    re.compile(r"(?i)\b(api[_-]?key|secret|token|password|bearer)\b\s*[:=]\s*['\"]?[A-Za-z0-9_\-.]{16,}"),
+    re.compile(
+        r"(?i)\b(api[_-]?key|secret|token|password|bearer)\b\s*[:=]\s*['\"]?[A-Za-z0-9_\-.]{16,}"
+    ),
 ]
 
 # Harness scaffolding injected into USER-role turns. Left in, it titles every note
@@ -54,7 +151,9 @@ SCAFFOLD_RES = [
     re.compile(r"^#\s*Context from my IDE setup:.*?(?=\n#\s|\Z)", re.S | re.M | re.I),
 ]
 OBJECTIVE_RE = re.compile(r"<objective>(.*?)</objective>", re.S | re.I)
-INTERNAL_RE = re.compile(r"<codex_internal_context\b.*?>(.*?)</codex_internal_context>", re.S | re.I)
+INTERNAL_RE = re.compile(
+    r"<codex_internal_context\b.*?>(.*?)</codex_internal_context>", re.S | re.I
+)
 USER_REQ_RE = re.compile(r"<USER_REQUEST>(.*?)</USER_REQUEST>", re.S)
 
 # Don't ingest this app's own scheduled maintenance — a corpus that records its own
@@ -130,8 +229,10 @@ def norm_path(fp: str) -> str:
 
 
 def _paths_in(blob: str) -> list[str]:
-    return [norm_path(m.replace("file:///", "").replace("%20", " "))
-            for m in PATH_RE.findall(blob or "")]
+    return [
+        norm_path(m.replace("file:///", "").replace("%20", " "))
+        for m in PATH_RE.findall(blob or "")
+    ]
 
 
 # --------------------------------------------------------------------------- #
@@ -180,8 +281,16 @@ def _parse_claude(p: Path) -> dict | None:
             asst.append(redact(txt))
     if not user and not asst:
         return None
-    return {"user": user, "asst": asst, "tools": tools, "files": files, "ts": ts,
-            "cwd": cwd, "branch": branch, "title": title}
+    return {
+        "user": user,
+        "asst": asst,
+        "tools": tools,
+        "files": files,
+        "ts": ts,
+        "cwd": cwd,
+        "branch": branch,
+        "title": title,
+    }
 
 
 def _parse_codex(p: Path) -> dict | None:
@@ -211,12 +320,15 @@ def _parse_codex(p: Path) -> dict | None:
             if isinstance(c, str):
                 txt = c
             elif isinstance(c, list):
-                txt = "\n".join(b.get("text", "") for b in c
-                                if isinstance(b, dict)
-                                and b.get("type") in ("input_text", "output_text", "text"))
+                txt = "\n".join(
+                    b.get("text", "")
+                    for b in c
+                    if isinstance(b, dict)
+                    and b.get("type") in ("input_text", "output_text", "text")
+                )
             txt = txt.strip()
             if role == "user":
-                files.extend(_paths_in(txt))       # harvest before stripping
+                files.extend(_paths_in(txt))  # harvest before stripping
                 txt = strip_scaffold(txt)
                 if txt:
                     user.append(redact(txt))
@@ -227,8 +339,17 @@ def _parse_codex(p: Path) -> dict | None:
             files.extend(_paths_in(json.dumps(payload.get("arguments") or "")))
     if not user and not asst:
         return None
-    return {"user": user, "asst": asst, "tools": tools, "files": files, "ts": ts,
-            "cwd": cwd, "branch": None, "title": None, "sid": sid}
+    return {
+        "user": user,
+        "asst": asst,
+        "tools": tools,
+        "files": files,
+        "ts": ts,
+        "cwd": cwd,
+        "branch": None,
+        "title": None,
+        "sid": sid,
+    }
 
 
 def _gem_text(o: dict) -> str:
@@ -252,7 +373,9 @@ def _parse_gemini(p: Path) -> dict | None:
         src, typ = o.get("source"), o.get("type")
         if src == "USER_EXPLICIT":
             txt = strip_scaffold(_gem_text(o))
-            txt = re.sub(r"<ADDITIONAL_METADATA>.*?</ADDITIONAL_METADATA>", "", txt, flags=re.S).strip()
+            txt = re.sub(
+                r"<ADDITIONAL_METADATA>.*?</ADDITIONAL_METADATA>", "", txt, flags=re.S
+            ).strip()
             if txt:
                 user.append(redact(txt))
         elif src == "MODEL":
@@ -263,13 +386,23 @@ def _parse_gemini(p: Path) -> dict | None:
                     asst.append(redact(txt))
     if not user and not asst:
         return None
-    return {"user": user, "asst": asst, "tools": [], "files": files, "ts": ts,
-            "cwd": None, "branch": None, "title": None}
+    return {
+        "user": user,
+        "asst": asst,
+        "tools": [],
+        "files": files,
+        "ts": ts,
+        "cwd": None,
+        "branch": None,
+        "title": None,
+    }
 
 
-PARSERS = {KIND_JSONL_CLAUDE: _parse_claude,
-           KIND_ROLLOUT_CODEX: _parse_codex,
-           KIND_GEMINI_BRAIN: _parse_gemini}
+PARSERS = {
+    KIND_JSONL_CLAUDE: _parse_claude,
+    KIND_ROLLOUT_CODEX: _parse_codex,
+    KIND_GEMINI_BRAIN: _parse_gemini,
+}
 
 
 # --------------------------------------------------------------------------- #
@@ -278,19 +411,28 @@ def _source_label(src: Source, cwd: str | None) -> str:
         return "codex"
     if src.kind == KIND_GEMINI_BRAIN:
         return "gemini"
-    return "cowork" if cwd and "local-agent-mode-sessions" in cwd.replace("\\", "/") else "claude-code"
+    return (
+        "cowork" if cwd and "local-agent-mode-sessions" in cwd.replace("\\", "/") else "claude-code"
+    )
 
 
-def write_note(vault: Path, rec: dict, user: list[str], asst: list[str],
-               max_msg: int, max_body: int) -> list[Path]:
+def write_note(
+    vault: Path, rec: dict, user: list[str], asst: list[str], max_msg: int, max_body: int
+) -> list[Path]:
     notes = vault / "notes"
     notes.mkdir(parents=True, exist_ok=True)
     uid = hashlib.md5(rec["id"].encode()).hexdigest()[:8]
     slug = f"{slugify(rec['title'])}-{uid}"
 
-    fm = {"id": rec["id"], "source": rec["source"], "title": rec["title"],
-          "project": rec.get("project"), "started": rec.get("started"),
-          "ended": rec.get("ended"), "messages": rec.get("messages")}
+    fm = {
+        "id": rec["id"],
+        "source": rec["source"],
+        "title": rec["title"],
+        "project": rec.get("project"),
+        "started": rec.get("started"),
+        "ended": rec.get("ended"),
+        "messages": rec.get("messages"),
+    }
     if rec.get("duplicates_merged"):
         fm["duplicates_merged"] = rec["duplicates_merged"]
     head = ["---"]
@@ -306,7 +448,9 @@ def write_note(vault: Path, rec: dict, user: list[str], asst: list[str],
         head.append("**Topics:** " + " ".join(f"[[topic-{t}]]" for t in rec["topics"]) + "\n")
 
     def clip(t: str) -> str:
-        return t if len(t) <= max_msg else t[:max_msg] + f"\n\n_[clipped {len(t)-max_msg:,} chars]_"
+        return (
+            t if len(t) <= max_msg else t[:max_msg] + f"\n\n_[clipped {len(t) - max_msg:,} chars]_"
+        )
 
     body = []
     for i in range(max(len(user), len(asst))):
@@ -319,8 +463,10 @@ def write_note(vault: Path, rec: dict, user: list[str], asst: list[str],
     chunks, cur, n = [], [], 0
     for blk in body:
         if cur and n + len(blk) > max_body:
-            chunks.append(cur); cur, n = [], 0
-        cur.append(blk); n += len(blk)
+            chunks.append(cur)
+            cur, n = [], 0
+        cur.append(blk)
+        n += len(blk)
     chunks.append(cur)
     written = []
     for i, chunk in enumerate(chunks, 1):
@@ -336,8 +482,9 @@ def write_note(vault: Path, rec: dict, user: list[str], asst: list[str],
     return written
 
 
-def run(vault: Path, srcs: list[Source], max_msg: int = 4000, max_body: int = 60000,
-        log=print) -> dict:
+def run(
+    vault: Path, srcs: list[Source], max_msg: int = 4000, max_body: int = 60000, log=print
+) -> dict:
     """Scrape every source into notes/. Incremental via .brain/manifest.json."""
     brain = vault / ".brain"
     brain.mkdir(parents=True, exist_ok=True)
@@ -350,8 +497,10 @@ def run(vault: Path, srcs: list[Source], max_msg: int = 4000, max_body: int = 60
         notes_dir = vault / "notes"
         if notes_dir.exists():
             for f in notes_dir.glob("*.md"):
-                try: f.unlink()
-                except OSError: pass
+                try:
+                    f.unlink()
+                except OSError:
+                    pass
     new = skipped = 0
 
     candidates_list = []
@@ -365,7 +514,8 @@ def run(vault: Path, srcs: list[Source], max_msg: int = 4000, max_body: int = 60
                 logs = conv / ".system_generated" / "logs"
                 for cand in ("transcript_full.jsonl", "transcript.jsonl"):
                     if (logs / cand).exists():
-                        files.append(logs / cand); break
+                        files.append(logs / cand)
+                        break
         else:
             files = sorted(src.path.rglob(src.glob))
         log(f"  {src.name}: {len(files)} transcript(s)")
@@ -382,7 +532,9 @@ def run(vault: Path, srcs: list[Source], max_msg: int = 4000, max_body: int = 60
             if not parsed:
                 manifest[str(p)] = sig
                 continue
-            title = parsed["title"] or (parsed["user"][0][:70] + "..." if parsed["user"] else p.stem)
+            title = parsed["title"] or (
+                parsed["user"][0][:70] + "..." if parsed["user"] else p.stem
+            )
             first_user = parsed["user"][0].strip() if parsed["user"] else ""
             if is_self_referential(title, first_user):
                 manifest[str(p)] = sig
@@ -390,10 +542,17 @@ def run(vault: Path, srcs: list[Source], max_msg: int = 4000, max_body: int = 60
             sid = parsed.get("sid") or hashlib.md5(str(p.resolve()).encode()).hexdigest()[:12]
             label = _source_label(src, parsed.get("cwd"))
             cwd = parsed.get("cwd") or ""
-            fp = hashlib.md5(f"{first_user}||{cwd}".encode()).hexdigest() if first_user else f"nofp-{sid}"
+            fp = (
+                hashlib.md5(f"{first_user}||{cwd}".encode()).hexdigest()
+                if first_user
+                else f"nofp-{sid}"
+            )
             rec = {
-                "id": f"{label}-{sid}", "title": title, "source": label,
-                "project": parsed.get("cwd"), "branch": parsed.get("branch"),
+                "id": f"{label}-{sid}",
+                "title": title,
+                "source": label,
+                "project": parsed.get("cwd"),
+                "branch": parsed.get("branch"),
                 "started": min(parsed["ts"]) if parsed["ts"] else None,
                 "ended": max(parsed["ts"]) if parsed["ts"] else None,
                 "messages": len(parsed["user"]) + len(parsed["asst"]),
@@ -401,17 +560,23 @@ def run(vault: Path, srcs: list[Source], max_msg: int = 4000, max_body: int = 60
                 "tools": sorted(set(parsed["tools"])),
                 "topics": keywords(title + " " + " ".join(parsed["user"][:3])),
             }
-            candidates_list.append({
-                "path": str(p), "sig": sig, "fp": fp, "rec": rec,
-                "user": parsed["user"], "asst": parsed["asst"]
-            })
+            candidates_list.append(
+                {
+                    "path": str(p),
+                    "sig": sig,
+                    "fp": fp,
+                    "rec": rec,
+                    "user": parsed["user"],
+                    "asst": parsed["asst"],
+                }
+            )
 
     # Deduplicate subagent transcripts sharing the same fingerprint (first_user + cwd)
     groups: dict[str, list[dict]] = {}
     for item in candidates_list:
         groups.setdefault(item["fp"], []).append(item)
 
-    for fp, group in groups.items():
+    for _fp, group in groups.items():
         # Keep the transcript with the most total messages
         best = max(group, key=lambda x: x["rec"]["messages"])
         if len(group) > 1:

@@ -7,6 +7,7 @@ parsing for the ENTIRE script, with errors pointing at innocent lines far away.
 
 This cost one silently failed scheduled run on 2026-07-31. Never again.
 """
+
 from __future__ import annotations
 
 import sys

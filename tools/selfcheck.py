@@ -13,6 +13,7 @@ floor, not the ceiling.
     python tools/selfcheck.py
     python tools/selfcheck.py --fix-hints
 """
+
 from __future__ import annotations
 
 import ast
@@ -62,24 +63,29 @@ class Visitor(ast.NodeVisitor):
     def visit_FunctionDef(self, n):
         for d in n.args.defaults + [x for x in n.args.kw_defaults if x]:
             if isinstance(d, (ast.List, ast.Dict, ast.Set)):
-                self.problems.append((d.lineno, "B006",
-                                      f"mutable default in {n.name}() - shared between calls"))
+                self.problems.append(
+                    (d.lineno, "B006", f"mutable default in {n.name}() - shared between calls")
+                )
         self.generic_visit(n)
 
     visit_AsyncFunctionDef = visit_FunctionDef
 
     def visit_ExceptHandler(self, n):
         if n.type is None:
-            self.problems.append((n.lineno, "E722",
-                                  "bare except - catches KeyboardInterrupt and SystemExit too"))
+            self.problems.append(
+                (n.lineno, "E722", "bare except - catches KeyboardInterrupt and SystemExit too")
+            )
         self.generic_visit(n)
 
     def visit_Compare(self, n):
         for op, cmp in zip(n.ops, n.comparators):
-            if isinstance(op, (ast.Is, ast.IsNot)) and isinstance(cmp, ast.Constant) \
-                    and isinstance(cmp.value, (str, int, float)) and cmp.value is not None:
-                self.problems.append((n.lineno, "F632",
-                                      "`is` with a literal - use == "))
+            if (
+                isinstance(op, (ast.Is, ast.IsNot))
+                and isinstance(cmp, ast.Constant)
+                and isinstance(cmp.value, (str, int, float))
+                and cmp.value is not None
+            ):
+                self.problems.append((n.lineno, "F632", "`is` with a literal - use == "))
         self.generic_visit(n)
 
     def visit_Assert(self, n):
@@ -92,8 +98,7 @@ def dead_locals(tree: ast.AST) -> list[tuple[int, str, str]]:
     """Assigned, never read, not a throwaway. This is the class of bug that left
     `_finish_note = ''` sitting in graph.py after a refactor."""
     out = []
-    for fn in [n for n in ast.walk(tree)
-               if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]:
+    for fn in [n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]:
         assigned: dict[str, int] = {}
         read: set[str] = set()
         for n in ast.walk(fn):
@@ -143,7 +148,7 @@ def check(path: Path) -> list[tuple[int, str, str]]:
             if any(ord(c) > 127 for c in line):
                 problems.append((i, "ASCII", "non-ASCII in a Windows script"))
 
-    # Honour `# noqa` the way ruff does, so a deliberate suppression silences BOTH
+    # Honour noqa suppressions the way ruff does, so a deliberate suppression silences BOTH
     # tools and a contributor never has to justify the same line twice.
     lines = src.splitlines()
     kept = []

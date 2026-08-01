@@ -35,6 +35,7 @@ client already sends.
     --allow-think leave reasoning alone (A/B test: is thinking actually the problem?)
     --port N      default 8787
 """
+
 from __future__ import annotations
 
 import argparse
@@ -51,9 +52,17 @@ TIMEOUT = 600
 # Model families whose reasoning is controlled by effort rather than a token budget.
 EFFORT_FAMILIES = ("openai/", "x-ai/", "grok")
 
-STATE = {"requests": 0, "thinking_stripped": 0, "json_forced": 0,
-         "in": 0, "out": 0, "reasoning": 0, "errors": 0, "empty": 0,
-         "peak_ratio": 0.0}
+STATE = {
+    "requests": 0,
+    "thinking_stripped": 0,
+    "json_forced": 0,
+    "in": 0,
+    "out": 0,
+    "reasoning": 0,
+    "errors": 0,
+    "empty": 0,
+    "peak_ratio": 0.0,
+}
 LOCK = threading.Lock()
 OPTS = argparse.Namespace(force_json=True, strip_think=True, verbose=True)
 
@@ -104,7 +113,7 @@ class Handler(BaseHTTPRequestHandler):
                         STATE["thinking_stripped"] += 1
                     if "json_mode" in changed:
                         STATE["json_forced"] += 1
-                note = f"{body.get('model','?')}  [{', '.join(changed) or 'unchanged'}]"
+                note = f"{body.get('model', '?')}  [{', '.join(changed) or 'unchanged'}]"
             except json.JSONDecodeError:
                 pass  # not JSON: relay untouched rather than break the client
 
@@ -124,7 +133,7 @@ class Handler(BaseHTTPRequestHandler):
             ctype = e.headers.get("Content-Type", "application/json")
             with LOCK:
                 STATE["errors"] += 1
-        except Exception as e:                       # noqa: BLE001
+        except Exception as e:
             payload = json.dumps({"error": {"message": f"shim: {e}"}}).encode()
             status, ctype = 502, "application/json"
             with LOCK:
@@ -139,7 +148,9 @@ class Handler(BaseHTTPRequestHandler):
                 rt = (u.get("completion_tokens_details") or {}).get("reasoning_tokens", 0)
                 content = ((d.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
                 with LOCK:
-                    STATE["in"] += pt; STATE["out"] += ct; STATE["reasoning"] += rt
+                    STATE["in"] += pt
+                    STATE["out"] += ct
+                    STATE["reasoning"] += rt
                     if pt:
                         STATE["peak_ratio"] = max(STATE["peak_ratio"], ct / pt)
                     if not content.strip():
@@ -178,8 +189,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--port", type=int, default=8787)
     ap.add_argument("--no-json", action="store_true", help="don't force response_format")
     ap.add_argument("--allow-think", action="store_true", help="leave reasoning untouched")
@@ -211,23 +223,30 @@ def main() -> int:
         print(f"\n  MEASURED output/input ratio: {ratio:.1%} average, {peak:.1%} worst chunk")
         print("  model_picker.py assumes OUTPUT_RATIO = 0.10.")
         if peak > 0.13:
-            print(f"  -> The worst chunk needed {peak:.0%}. Raise OUTPUT_RATIO to "
-                  f"{peak:.2f} (or lower --token-budget) or dense chunks will keep truncating.")
+            print(
+                f"  -> The worst chunk needed {peak:.0%}. Raise OUTPUT_RATIO to "
+                f"{peak:.2f} (or lower --token-budget) or dense chunks will keep truncating."
+            )
         elif peak < 0.07:
-            print("  -> Comfortably under. You could raise --token-budget for fewer, "
-                  "cheaper calls.")
+            print(
+                "  -> Comfortably under. You could raise --token-budget for fewer, cheaper calls."
+            )
         else:
             print("  -> The 0.10 assumption holds for this corpus. Leave it.")
 
     if STATE["reasoning"]:
-        print(f"\n  !! {STATE['reasoning']:,} reasoning tokens still billed despite "
-              "reasoning being forced off.\n     The model or provider ignored the budget — "
-              "switch to a model with no 'reasoning' parameter at all.")
+        print(
+            f"\n  !! {STATE['reasoning']:,} reasoning tokens still billed despite "
+            "reasoning being forced off.\n     The model or provider ignored the budget — "
+            "switch to a model with no 'reasoning' parameter at all."
+        )
     else:
         print("\n  Zero reasoning tokens billed - thinking really was disabled.")
     if STATE["empty"]:
-        print(f"\n  !! {STATE['empty']} response(s) STILL had empty content. Thinking was not "
-              "the (only) cause; suspect --token-budget or the model itself.")
+        print(
+            f"\n  !! {STATE['empty']} response(s) STILL had empty content. Thinking was not "
+            "the (only) cause; suspect --token-budget or the model itself."
+        )
     return 0
 
 

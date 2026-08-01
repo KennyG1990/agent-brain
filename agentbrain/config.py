@@ -9,6 +9,7 @@ back up, or accidentally attach to a bug report.
 `api_key` is deliberately absent from DEFAULTS. If an older build left one in
 settings.json, load() strips it and secrets.audit() reports it.
 """
+
 from __future__ import annotations
 
 import json
@@ -59,15 +60,15 @@ PROVIDERS: dict[str, dict] = {
         "env": "OPENAI_API_KEY",
         "keys": "",
         "note": "Ollama, LM Studio, vLLM, Together, Groq — anything speaking the "
-                "OpenAI chat format. Local servers usually ignore the key field.",
+        "OpenAI chat format. Local servers usually ignore the key field.",
     },
 }
 
 DEFAULTS = {
-    "vault": "",            # blank -> <config dir>/vault
+    "vault": "",  # blank -> <config dir>/vault
     "provider": "gemini",
-    "base_url": "",         # blank -> provider default
-    "model": "",            # blank -> provider default
+    "base_url": "",  # blank -> provider default
+    "model": "",  # blank -> provider default
     "extra_sources": [],
     "use_graphify": "auto",  # auto | never | always
     "max_note_chars": 60000,
@@ -131,6 +132,7 @@ def vault_path(cfg: dict | None = None) -> Path:
 def resolve(cfg: dict | None = None) -> dict:
     """Effective provider settings. The key comes from secrets.py — never from cfg."""
     from . import secrets  # local import: secrets imports config for audit()
+
     cfg = cfg or load()
     pid = cfg.get("provider", "gemini")
     spec = PROVIDERS.get(pid, PROVIDERS["gemini"])

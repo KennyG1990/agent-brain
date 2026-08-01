@@ -7,6 +7,7 @@ can't leave, they shouldn't have arrived.
 Deletion is deliberately explicit: it reports exactly what it will remove and how
 big it is BEFORE touching anything, and it never guesses at a path.
 """
+
 from __future__ import annotations
 
 import json
@@ -55,15 +56,19 @@ def export_obsidian(vault: Path, out_dir: Path) -> Path:
     by_src: dict[str, list] = {}
     for r in records:
         by_src.setdefault(r.get("source", "?"), []).append(r)
-    lines = ["# Agent Brain export", "",
-             f"_{n} notes, {len(records)} conversations, "
-             f"exported {datetime.now().strftime('%Y-%m-%d')}._", ""]
+    lines = [
+        "# Agent Brain export",
+        "",
+        f"_{n} notes, {len(records)} conversations, "
+        f"exported {datetime.now().strftime('%Y-%m-%d')}._",
+        "",
+    ]
     for src in sorted(by_src):
         rows = sorted(by_src[src], key=lambda r: r.get("started") or "", reverse=True)
         lines += [f"## {src} ({len(rows)})", ""]
         for r in rows[:500]:
             date = (r.get("started") or "")[:10]
-            lines.append(f"- {date} — {r.get('title','?')[:100]}")
+            lines.append(f"- {date} — {r.get('title', '?')[:100]}")
         lines.append("")
     (out_dir / "INDEX.md").write_text("\n".join(lines), encoding="utf-8")
     return out_dir
@@ -74,16 +79,19 @@ def export_markdown(vault: Path, out: Path) -> Path:
     recs_p = vault / ".brain" / "records.json"
     records = json.loads(recs_p.read_text(encoding="utf-8")) if recs_p.exists() else []
     records.sort(key=lambda r: r.get("started") or "", reverse=True)
-    lines = ["# My AI work history", "",
-             f"{len(records)} conversations across "
-             f"{len({r.get('source') for r in records})} agents.", ""]
+    lines = [
+        "# My AI work history",
+        "",
+        f"{len(records)} conversations across {len({r.get('source') for r in records})} agents.",
+        "",
+    ]
     cur = None
     for r in records:
         month = (r.get("started") or "unknown")[:7]
         if month != cur:
             cur = month
             lines += ["", f"## {month}", ""]
-        lines.append(f"- **{r.get('source','?')}** — {r.get('title','?')[:120]}")
+        lines.append(f"- **{r.get('source', '?')}** — {r.get('title', '?')[:120]}")
         if r.get("files"):
             lines.append(f"  - files: {', '.join(str(f) for f in r['files'][:5])}")
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -116,9 +124,14 @@ def deletion_plan(vault: Path) -> list[dict]:
     plan = []
     for p, what in targets:
         if p.exists():
-            plan.append({"path": str(p), "what": what, "bytes": _size(p),
-                         "files": (1 if p.is_file()
-                                   else sum(1 for f in p.rglob("*") if f.is_file()))})
+            plan.append(
+                {
+                    "path": str(p),
+                    "what": what,
+                    "bytes": _size(p),
+                    "files": (1 if p.is_file() else sum(1 for f in p.rglob("*") if f.is_file())),
+                }
+            )
     return plan
 
 
@@ -151,6 +164,7 @@ def delete_everything(vault: Path, keep_notes: bool = False) -> list[str]:
 
 def main() -> int:
     import argparse
+
     ap = argparse.ArgumentParser(description="Agent Brain data export / deletion")
     ap.add_argument("--vault", type=Path, default=None)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -171,18 +185,20 @@ def main() -> int:
 
     plan = deletion_plan(vault)
     if not plan:
-        print("Nothing to delete."); return 0
+        print("Nothing to delete.")
+        return 0
     total = sum(i["bytes"] for i in plan)
     print("This would permanently delete:\n")
     for i in plan:
-        print(f"  {i['bytes']/1e6:>8.1f} MB  {i['files']:>5} files  {i['what']}")
+        print(f"  {i['bytes'] / 1e6:>8.1f} MB  {i['files']:>5} files  {i['what']}")
         print(f"            {i['path']}")
-    print(f"\n  TOTAL {total/1e6:.1f} MB")
+    print(f"\n  TOTAL {total / 1e6:.1f} MB")
     if a.cmd == "plan":
         return 0
     if not a.yes:
         if input("\nType DELETE to confirm: ").strip() != "DELETE":
-            print("Cancelled. Nothing was removed."); return 1
+            print("Cancelled. Nothing was removed.")
+            return 1
     for line in delete_everything(vault, keep_notes=a.keep_notes):
         print("  " + line)
     return 0

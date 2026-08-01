@@ -16,6 +16,7 @@ So: no API call in this app happens until has_consent() is True.
 The escape hatch is genuine, not decorative: point base_url at Ollama or LM Studio and
 nothing leaves the machine at all. record(local_only=True) records that choice.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,7 +25,7 @@ from pathlib import Path
 
 from . import config
 
-VERSION = 1          # bump to re-ask everyone when the disclosure materially changes
+VERSION = 1  # bump to re-ask everyone when the disclosure materially changes
 
 
 SUMMARY = """\
@@ -72,8 +73,7 @@ def state() -> dict:
 def has_consent() -> bool:
     """True only if this exact disclosure version was accepted for uploading."""
     s = state()
-    return bool(s.get("accepted")) and s.get("version") == VERSION \
-        and not s.get("local_only")
+    return bool(s.get("accepted")) and s.get("version") == VERSION and not s.get("local_only")
 
 
 def is_local_only() -> bool:
@@ -88,12 +88,18 @@ def answered() -> bool:
 
 def record(accepted: bool, local_only: bool = False) -> Path:
     p = _path()
-    p.write_text(json.dumps({
-        "version": VERSION,
-        "accepted": bool(accepted),
-        "local_only": bool(local_only),
-        "when": time.strftime("%Y-%m-%dT%H:%M:%S"),
-    }, indent=2), encoding="utf-8")
+    p.write_text(
+        json.dumps(
+            {
+                "version": VERSION,
+                "accepted": bool(accepted),
+                "local_only": bool(local_only),
+                "when": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     return p
 
 
@@ -112,8 +118,10 @@ def gate(base_url: str = "") -> tuple[bool, str]:
     if _is_local(base_url):
         return True, ""
     if is_local_only():
-        return False, ("You chose local-only. Point Base URL at Ollama or LM Studio, "
-                       "or change the choice in Settings.")
+        return False, (
+            "You chose local-only. Point Base URL at Ollama or LM Studio, "
+            "or change the choice in Settings."
+        )
     if not has_consent():
         return False, "Consent for uploading note text has not been given yet."
     return True, ""
@@ -121,8 +129,10 @@ def gate(base_url: str = "") -> tuple[bool, str]:
 
 def _is_local(url: str) -> bool:
     u = (url or "").lower()
-    return any(h in u for h in ("localhost", "127.0.0.1", "0.0.0.0", "::1",
-                                ".local:", "host.docker.internal"))
+    return any(
+        h in u
+        for h in ("localhost", "127.0.0.1", "0.0.0.0", "::1", ".local:", "host.docker.internal")
+    )
 
 
 def sample_upload(vault: Path, chars: int = 1500) -> str:
@@ -132,5 +142,6 @@ def sample_upload(vault: Path, chars: int = 1500) -> str:
         return "(no notes yet — scan first and this will show real text from your own data)"
     raw = notes[len(notes) // 2].read_text(encoding="utf-8", errors="replace")
     body = raw.split("## Conversation", 1)[-1].strip()
-    return (f"From {notes[len(notes)//2].name}:\n\n{body[:chars]}"
-            + ("\n\n…(truncated for display)" if len(body) > chars else ""))
+    return f"From {notes[len(notes) // 2].name}:\n\n{body[:chars]}" + (
+        "\n\n…(truncated for display)" if len(body) > chars else ""
+    )

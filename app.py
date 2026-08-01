@@ -6,6 +6,7 @@ Deliberately written in Python-2-compatible syntax down to the version check, so
 running it on an old interpreter produces a SENTENCE rather than a SyntaxError. Every
 other module uses modern syntax freely; this file is the airlock.
 """
+
 import sys
 
 MIN = (3, 10)
@@ -21,8 +22,7 @@ if sys.version_info < MIN:
         "  On Windows, TICK BOTH BOXES in the installer:\n"
         "     [x] Add python.exe to PATH\n"
         "     [x] tcl/tk and IDLE          <- the window will not open without this\n"
-        "\n"
-        % (MIN[0], MIN[1], sys.version.split()[0], sys.executable)
+        "\n" % (MIN[0], MIN[1], sys.version.split()[0], sys.executable)
     )
     sys.exit(1)
 
@@ -31,6 +31,7 @@ def _check_tkinter():
     """The single most common failure on a fresh Windows install."""
     try:
         import tkinter  # noqa: F401  -- availability probe, not a use
+
         return True, ""
     except ImportError as e:
         return False, (
@@ -47,7 +48,7 @@ def _check_tkinter():
             "\n"
             "  Everything except the window still works from the command line:\n"
             "     python -m agentbrain.cli scan\n"
-            "     python -m agentbrain.cli search \"your question\"\n"
+            '     python -m agentbrain.cli search "your question"\n'
             "\n" % e
         )
 
@@ -74,6 +75,7 @@ def main():
         if not ok:
             sys.stderr.write(msg)
         from agentbrain import sources
+
         print("\nSession logs found on this computer:")
         for s in sources.discover():
             mark = "  OK " if (s.found and s.files) else ("  -- " if s.found else "     ")
@@ -85,6 +87,7 @@ def main():
         sys.stderr.write(msg)
         return 1
     from agentbrain.gui import run
+
     return run()
 
 

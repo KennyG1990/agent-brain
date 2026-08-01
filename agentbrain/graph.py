@@ -13,6 +13,7 @@ OVERWROTE the graph. It went 1,781 nodes -> 201 in five weeks while the corpus t
 and most nights produced zero edges. Extraction here is incremental on input AND
 additive on output, plus a shrink guard. Never reintroduce a bare overwrite.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -44,8 +45,9 @@ def run_graphify(notes_dir: Path, log=print) -> bool:
     """Hand off to graphify if the user has it. Returns True on success."""
     log("graphify detected — using it (better than the built-in extractor).")
     try:
-        r = subprocess.run(["graphify", "extract", str(notes_dir)],
-                           capture_output=True, text=True, timeout=60 * 60)
+        r = subprocess.run(
+            ["graphify", "extract", str(notes_dir)], capture_output=True, text=True, timeout=60 * 60
+        )
     except (OSError, subprocess.TimeoutExpired) as e:
         log(f"graphify failed to run: {e}")
         return False
@@ -72,7 +74,7 @@ def _parse_json(txt: str) -> dict | None:
     try:
         return json.loads(txt)
     except json.JSONDecodeError:
-        m = re.search(r"\{.*\}", txt, re.S)   # model wrapped it in chatter
+        m = re.search(r"\{.*\}", txt, re.S)  # model wrapped it in chatter
         if m:
             try:
                 return json.loads(m.group(0))
@@ -97,12 +99,19 @@ def pending(vault: Path) -> list[tuple[Path, str, int]]:
             continue
         sig = f"{st.st_mtime_ns}:{st.st_size}"
         if manifest.get(p.name) != sig:
-            todo.append((p, sig, min(st.st_size, 12000) // 4))   # ~4 chars/token
+            todo.append((p, sig, min(st.st_size, 12000) // 4))  # ~4 chars/token
     return todo
 
 
-def build(vault: Path, cfg: dict, limit: int | None = None, log=print,
-          should_stop=lambda: False, meter=None, workers: int = 4) -> dict:
+def build(
+    vault: Path,
+    cfg: dict,
+    limit: int | None = None,
+    log=print,
+    should_stop=lambda: False,
+    meter=None,
+    workers: int = 4,
+) -> dict:
     """Extract concepts per note and MERGE into graph.json. Incremental + additive.
 
     Resumable: the manifest is written after every batch, so a crash, a spend cap or
@@ -115,7 +124,9 @@ def build(vault: Path, cfg: dict, limit: int | None = None, log=print,
     out_dir.mkdir(parents=True, exist_ok=True)
     gp, mp = out_dir / "graph.json", out_dir / "extract-manifest.json"
 
-    graph = json.loads(gp.read_text(encoding="utf-8")) if gp.exists() else {"nodes": [], "links": []}
+    graph = (
+        json.loads(gp.read_text(encoding="utf-8")) if gp.exists() else {"nodes": [], "links": []}
+    )
     before = len(graph["nodes"])
     manifest = json.loads(mp.read_text(encoding="utf-8")) if mp.exists() else {}
     nodes = {n["id"]: n for n in graph["nodes"]}
@@ -129,8 +140,7 @@ def build(vault: Path, cfg: dict, limit: int | None = None, log=print,
         log("Graph is already current - nothing to extract.")
         return {"extracted": 0, "nodes": before, "links": len(links)}
 
-    log(f"{len(todo)} note(s) to extract with {workers} worker(s). "
-        "Unchanged notes are kept.")
+    log(f"{len(todo)} note(s) to extract with {workers} worker(s). Unchanged notes are kept.")
     stop = threading.Event()
     counters = {"done": 0, "failed": 0}
 
@@ -142,8 +152,9 @@ def build(vault: Path, cfg: dict, limit: int | None = None, log=print,
         if len(body.strip()) < 200:
             return (p, sig, None)
         try:
-            raw = providers.chat(cfg, SYSTEM, f"TITLE: {title}\n\nTRANSCRIPT:\n{body}",
-                                 meter=meter, log=log)
+            raw = providers.chat(
+                cfg, SYSTEM, f"TITLE: {title}\n\nTRANSCRIPT:\n{body}", meter=meter, log=log
+            )
         except providers.SpendCap:
             stop.set()
             raise
@@ -171,7 +182,7 @@ def build(vault: Path, cfg: dict, limit: int | None = None, log=print,
     for start in range(0, len(todo), BATCH):
         if stop.is_set() or should_stop():
             break
-        batch = todo[start:start + BATCH]
+        batch = todo[start : start + BATCH]
         results = []
         with cf.ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
             futures = [pool.submit(work, it) for it in batch]
@@ -191,20 +202,26 @@ def build(vault: Path, cfg: dict, limit: int | None = None, log=print,
             counters["done"] += 1
             _absorb(nodes, links, p, parsed)
         _write(gp, mp, nodes, links, manifest, out_dir)
-        log(f"  ...{counters['done']}/{len(todo)} notes, {len(nodes)} nodes"
-            + (f", {meter.line()}" if meter else ""))
+        log(
+            f"  ...{counters['done']}/{len(todo)} notes, {len(nodes)} nodes"
+            + (f", {meter.line()}" if meter else "")
+        )
     done = counters["done"]
     if capped:
         log(f"\n{capped}")
     # SHRINK GUARD - never install a graph smaller than what we already had.
     if len(nodes) < before * 0.8:
-        log(f"SHRINK GUARD: refusing to save {len(nodes)} nodes over an existing {before}. "
-            "Nothing was changed.")
+        log(
+            f"SHRINK GUARD: refusing to save {len(nodes)} nodes over an existing {before}. "
+            "Nothing was changed."
+        )
         return {"extracted": done, "nodes": before, "links": len(links), "guarded": True}
 
     _write(gp, mp, nodes, links, manifest, out_dir)
-    log(f"Graph: {len(nodes)} nodes, {len(links)} links (was {before} nodes). "
-        f"Extracted {done} note(s). Open graph/graph.html to browse it.")
+    log(
+        f"Graph: {len(nodes)} nodes, {len(links)} links (was {before} nodes). "
+        f"Extracted {done} note(s). Open graph/graph.html to browse it."
+    )
     return {"extracted": done, "nodes": len(nodes), "links": len(links)}
 
 
@@ -212,18 +229,26 @@ def _absorb(nodes: dict, links: dict, p: Path, data: dict) -> None:
     """Fold one note's extraction into the accumulating graph. Additive, never replacing."""
     nid = hashlib.md5(p.name.encode()).hexdigest()[:10]
     title = data.get("title") or p.stem
-    nodes[f"note-{nid}"] = {"id": f"note-{nid}", "label": str(title)[:80],
-                            "kind": "conversation", "source_file": p.name,
-                            "summary": (data.get("summary") or "")[:200]}
+    nodes[f"note-{nid}"] = {
+        "id": f"note-{nid}",
+        "label": str(title)[:80],
+        "kind": "conversation",
+        "source_file": p.name,
+        "summary": (data.get("summary") or "")[:200],
+    }
     for c in (data.get("concepts") or [])[:10]:
         name = str(c.get("name", "")).strip()[:40]
         if not name:
             continue
         cid = "c-" + re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
-        nodes.setdefault(cid, {"id": cid, "label": name,
-                               "kind": str(c.get("kind", "concept"))[:20]})
+        nodes.setdefault(
+            cid, {"id": cid, "label": name, "kind": str(c.get("kind", "concept"))[:20]}
+        )
         links[(f"note-{nid}", cid, "mentions")] = {
-            "source": f"note-{nid}", "target": cid, "rel": "mentions"}
+            "source": f"note-{nid}",
+            "target": cid,
+            "rel": "mentions",
+        }
     for e in (data.get("edges") or [])[:20]:
         a = "c-" + re.sub(r"[^a-z0-9]+", "-", str(e.get("from", "")).lower()).strip("-")
         b = "c-" + re.sub(r"[^a-z0-9]+", "-", str(e.get("to", "")).lower()).strip("-")
@@ -233,8 +258,10 @@ def _absorb(nodes: dict, links: dict, p: Path, data: dict) -> None:
 
 
 def _write(gp: Path, mp: Path, nodes: dict, links: dict, manifest: dict, out_dir: Path) -> None:
-    gp.write_text(json.dumps({"nodes": list(nodes.values()),
-                              "links": list(links.values())}, indent=1), encoding="utf-8")
+    gp.write_text(
+        json.dumps({"nodes": list(nodes.values()), "links": list(links.values())}, indent=1),
+        encoding="utf-8",
+    )
     mp.write_text(json.dumps(manifest, indent=1), encoding="utf-8")
     _html(out_dir / "graph.html", list(nodes.values()), list(links.values()))
 
@@ -252,7 +279,8 @@ def _html(path: Path, nodes: list, links: list) -> None:
         "<span style=color:#9aa0a6>drag to pan · scroll to zoom · hover a node</span>"
         "<div id=h style=margin-top:6px;color:#7aa2f7></div></div><canvas id=c></canvas>"
         f"<script>const D={payload};" + _JS + "</script>",
-        encoding="utf-8")
+        encoding="utf-8",
+    )
 
 
 _JS = r"""

@@ -28,6 +28,7 @@ Usage:
     python model_picker.py --notes 756         # cost for a specific corpus size
     python model_picker.py --json
 """
+
 from __future__ import annotations
 
 import json
@@ -56,8 +57,10 @@ def fetch(api_key: str = "") -> list[dict]:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
             data = json.loads(r.read().decode("utf-8", "replace"))
     except urllib.error.HTTPError as e:
-        raise RuntimeError(f"OpenRouter returned HTTP {e.code}. "
-                           f"{'Check the API key.' if e.code in (401, 403) else ''}") from e
+        raise RuntimeError(
+            f"OpenRouter returned HTTP {e.code}. "
+            f"{'Check the API key.' if e.code in (401, 403) else ''}"
+        ) from e
     except urllib.error.URLError as e:
         raise RuntimeError(f"Could not reach OpenRouter: {e.reason}") from e
     return data.get("data", [])
@@ -80,7 +83,7 @@ def analyse(m: dict, notes: int) -> dict | None:
     params = set(m.get("supported_parameters") or [])
 
     if ctx < 60_000:
-        return None                      # graphify batches many notes per chunk
+        return None  # graphify batches many notes per chunk
     is_free = p_in == 0 and p_out == 0
 
     tok_in = notes * TOKENS_PER_NOTE
@@ -94,8 +97,10 @@ def analyse(m: dict, notes: int) -> dict | None:
         score += 40
         why.append("no hidden reasoning — the whole output budget goes to your JSON")
     else:
-        why.append("THINKS BY DEFAULT — reasoning tokens eat the output budget; this is "
-                   "what produced the empty responses in the 2026-07-31 run")
+        why.append(
+            "THINKS BY DEFAULT — reasoning tokens eat the output budget; this is "
+            "what produced the empty responses in the 2026-07-31 run"
+        )
     if structured:
         score += 25
         why.append("supports structured outputs, so no ```json fences to fail parsing")
@@ -105,26 +110,39 @@ def analyse(m: dict, notes: int) -> dict | None:
         score -= 25
         why.append("no structured-output support — expect fence/format failures")
     if ctx >= 200_000:
-        score += 10; why.append(f"{ctx//1000}k context fits big chunks")
+        score += 10
+        why.append(f"{ctx // 1000}k context fits big chunks")
     elif ctx >= 100_000:
-        score += 6; why.append(f"{ctx//1000}k context is adequate")
+        score += 6
+        why.append(f"{ctx // 1000}k context is adequate")
     else:
-        why.append(f"{ctx//1000}k context is tight; expect more chunk splitting")
+        why.append(f"{ctx // 1000}k context is tight; expect more chunk splitting")
     if max_out >= 32_768:
-        score += 8; why.append(f"{max_out:,} max output leaves room for large graphs")
+        score += 8
+        why.append(f"{max_out:,} max output leaves room for large graphs")
     elif max_out and max_out < 16_000:
-        score -= 8; why.append(f"only {max_out:,} max output — truncation risk")
+        score -= 8
+        why.append(f"only {max_out:,} max output — truncation risk")
 
     if is_free:
-        score += 5; why.append("free tier (expect rate limits)")
+        score += 5
+        why.append("free tier (expect rate limits)")
     else:
-        score -= min(cost * 1.2, 30)      # price matters, but never outweighs correctness
+        score -= min(cost * 1.2, 30)  # price matters, but never outweighs correctness
 
     return {
-        "id": m.get("id", "?"), "name": m.get("name", m.get("id", "?")),
-        "in": p_in, "out": p_out, "ctx": ctx, "max_out": max_out,
-        "cost": cost, "free": is_free, "thinks": thinks, "structured": structured,
-        "score": round(score, 1), "why": why,
+        "id": m.get("id", "?"),
+        "name": m.get("name", m.get("id", "?")),
+        "in": p_in,
+        "out": p_out,
+        "ctx": ctx,
+        "max_out": max_out,
+        "cost": cost,
+        "free": is_free,
+        "thinks": thinks,
+        "structured": structured,
+        "score": round(score, 1),
+        "why": why,
         "description": (m.get("description") or "").strip(),
     }
 
@@ -144,8 +162,8 @@ def analyse(m: dict, notes: int) -> dict | None:
 # expected output at only ~25% of the ceiling, leaving 4x headroom for dense chunks.
 # This is a HEURISTIC, not a derivation. or_shim.py reports the observed ratio per
 # request; once you have real numbers for your corpus, correct OUTPUT_RATIO here.
-OUTPUT_HEADROOM = 0.50      # target: expected output uses half the ceiling
-THINKING_RESERVE = 0.30     # if the model thinks, assume 70% of the ceiling is burned
+OUTPUT_HEADROOM = 0.50  # target: expected output uses half the ceiling
+THINKING_RESERVE = 0.30  # if the model thinks, assume 70% of the ceiling is burned
 BUDGET_FLOOR, BUDGET_CEIL = 8_000, 120_000
 GRAPHIFY_DEFAULT_BUDGET = 60_000
 
@@ -155,24 +173,34 @@ def suggest_token_budget(a: dict, thinking_disabled: bool = False) -> dict:
     max_out = a.get("max_out") or 0
     why = []
     if not max_out:
-        return {"budget": GRAPHIFY_DEFAULT_BUDGET, "confident": False,
-                "why": ["this model does not publish max_completion_tokens, so there is "
-                        "nothing to compute from — using graphify's default of 60,000"]}
+        return {
+            "budget": GRAPHIFY_DEFAULT_BUDGET,
+            "confident": False,
+            "why": [
+                "this model does not publish max_completion_tokens, so there is "
+                "nothing to compute from — using graphify's default of 60,000"
+            ],
+        }
 
     usable = max_out
     if a["thinks"] and not thinking_disabled:
         usable = int(max_out * THINKING_RESERVE)
-        why.append(f"thinks by default, so only ~{THINKING_RESERVE:.0%} of the "
-                   f"{max_out:,} ceiling is assumed available for actual JSON")
+        why.append(
+            f"thinks by default, so only ~{THINKING_RESERVE:.0%} of the "
+            f"{max_out:,} ceiling is assumed available for actual JSON"
+        )
     elif a["thinks"] and thinking_disabled:
-        why.append(f"thinking forced off via the shim, so the full {max_out:,} "
-                   "output ceiling is usable")
+        why.append(
+            f"thinking forced off via the shim, so the full {max_out:,} output ceiling is usable"
+        )
     else:
         why.append(f"pure completion model: the full {max_out:,} output ceiling is usable")
 
     budget = int(usable * OUTPUT_HEADROOM / OUTPUT_RATIO)
-    why.append(f"targeting expected output at {OUTPUT_HEADROOM:.0%} of that "
-               f"(4x headroom for dense chunks) at the measured {OUTPUT_RATIO:.0%} ratio")
+    why.append(
+        f"targeting expected output at {OUTPUT_HEADROOM:.0%} of that "
+        f"(4x headroom for dense chunks) at the measured {OUTPUT_RATIO:.0%} ratio"
+    )
 
     ctx_cap = int(a["ctx"] * 0.6)
     if budget > ctx_cap:
@@ -180,25 +208,37 @@ def suggest_token_budget(a: dict, thinking_disabled: bool = False) -> dict:
         why.append(f"capped to 60% of the {a['ctx']:,} context window")
     budget = max(BUDGET_FLOOR, min(budget, BUDGET_CEIL))
     if budget in (BUDGET_FLOOR, BUDGET_CEIL):
-        why.append(f"clamped to the {budget:,} "
-                   f"{'floor (fewer, larger calls beat thousands of tiny ones)' if budget == BUDGET_FLOOR else 'ceiling'}")
+        why.append(
+            f"clamped to the {budget:,} "
+            f"{'floor (fewer, larger calls beat thousands of tiny ones)' if budget == BUDGET_FLOOR else 'ceiling'}"
+        )
     if budget < GRAPHIFY_DEFAULT_BUDGET:
-        why.append(f"LOWER than graphify's 60,000 default — this is the change that "
-                   "reduces truncation for this model")
+        why.append(
+            "LOWER than graphify's 60,000 default — this is the change that "
+            "reduces truncation for this model"
+        )
     return {"budget": budget, "confident": True, "why": why}
 
 
 def verdict(a: dict) -> tuple[str, str]:
     """(one-line badge, colour hint) — the headline for the GUI."""
     if not a["thinks"] and a["structured"]:
-        return ("RECOMMENDED — pure completion model with structured outputs. "
-                "Best fit for this job.", "ok")
+        return (
+            "RECOMMENDED — pure completion model with structured outputs. Best fit for this job.",
+            "ok",
+        )
     if a["thinks"] and a["structured"]:
-        return ("RISKY — thinks by default. Hidden reasoning can consume the whole output "
-                "budget and return nothing. Cheap, but this is the known failure mode.", "warn")
+        return (
+            "RISKY — thinks by default. Hidden reasoning can consume the whole output "
+            "budget and return nothing. Cheap, but this is the known failure mode.",
+            "warn",
+        )
     if not a["structured"]:
-        return ("NOT ADVISED — no structured-output support; the extractor will hit "
-                "JSON parse failures.", "bad")
+        return (
+            "NOT ADVISED — no structured-output support; the extractor will hit "
+            "JSON parse failures.",
+            "bad",
+        )
     return ("Usable.", "")
 
 
@@ -238,8 +278,11 @@ def explain(a: dict, notes: int) -> str:
     badge, _ = verdict(a)
     price = "FREE" if a["free"] else f"${a['in']:.3f} in / ${a['out']:.3f} out per 1M tokens"
     lines = [
-        a["name"], a["id"], "",
-        badge, "",
+        a["name"],
+        a["id"],
+        "",
+        badge,
+        "",
         f"Price:        {price}",
         f"This job:     ~${a['cost']:.2f} for {notes} notes"
         + ("  (free tier)" if a["free"] else ""),
@@ -247,19 +290,22 @@ def explain(a: dict, notes: int) -> str:
         f"Max output:   {a['max_out']:,}" if a["max_out"] else "Max output:   not published",
         f"Thinks:       {'YES - risky here' if a['thinks'] else 'no - good'}",
         f"Structured:   {'yes' if a['structured'] else 'NO - risky here'}",
-        "", "Why this rating:",
+        "",
+        "Why this rating:",
     ]
     lines += [f"  - {w}" for w in a["why"]]
     if a["description"]:
         lines += ["", "OpenRouter's description:", ""]
         d = a["description"]
         while d:
-            lines.append("  " + d[:96]); d = d[96:]
+            lines.append("  " + d[:96])
+            d = d[96:]
     return "\n".join(lines)
 
 
 def main() -> int:
     import argparse
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--notes", type=int, default=756)
     ap.add_argument("--key", default="")
@@ -268,12 +314,15 @@ def main() -> int:
     a = ap.parse_args()
     ranked = rank(fetch(a.key), a.notes, a.top)
     if a.json:
-        print(json.dumps(ranked, indent=2)); return 0
+        print(json.dumps(ranked, indent=2))
+        return 0
     print(f"{'model':<44}{'$/Min':>8}{'$/Mout':>8}{'ctx':>9}{'think':>7}{'struct':>7}{'JOB $':>8}")
     for r in ranked:
-        print(f"{r['id']:<44}{r['in']:>8.3f}{r['out']:>8.3f}{r['ctx']:>9}"
-              f"{'YES' if r['thinks'] else 'no':>7}{'yes' if r['structured'] else 'NO':>7}"
-              f"{r['cost']:>8.2f}")
+        print(
+            f"{r['id']:<44}{r['in']:>8.3f}{r['out']:>8.3f}{r['ctx']:>9}"
+            f"{'YES' if r['thinks'] else 'no':>7}{'yes' if r['structured'] else 'NO':>7}"
+            f"{r['cost']:>8.2f}"
+        )
     print()
     print(explain(ranked[0], a.notes))
     return 0

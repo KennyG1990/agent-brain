@@ -20,6 +20,7 @@ committed or copied. They do NOT protect against malware already running as you 
 code can ask the same OS to decrypt. No local app can defend against that. If your threat
 model includes it, use the environment variable and a short-lived key.
 """
+
 from __future__ import annotations
 
 import base64
@@ -34,8 +35,13 @@ SERVICE = "AgentBrain"
 ACCOUNT = "openrouter"
 
 # Environment variables are read FIRST and never written by us.
-ENV_VARS = ("AGENTBRAIN_API_KEY", "OPENROUTER_API_KEY", "OPENAI_API_KEY",
-            "ANTHROPIC_API_KEY", "GEMINI_API_KEY")
+ENV_VARS = (
+    "AGENTBRAIN_API_KEY",
+    "OPENROUTER_API_KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "GEMINI_API_KEY",
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -50,8 +56,7 @@ def _dpapi(encrypt: bool, data: bytes) -> bytes:
     from ctypes import wintypes
 
     class BLOB(ctypes.Structure):
-        _fields_ = [("cbData", wintypes.DWORD),
-                    ("pbData", ctypes.POINTER(ctypes.c_char))]
+        _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_char))]
 
     crypt32, kernel32 = ctypes.windll.crypt32, ctypes.windll.kernel32
     buf = ctypes.create_string_buffer(data, len(data))
@@ -61,8 +66,9 @@ def _dpapi(encrypt: bool, data: bytes) -> bytes:
     # 0x1 = CRYPTPROTECT_UI_FORBIDDEN: never pop a dialog from a background thread
     ok = fn(ctypes.byref(blob_in), None, None, None, None, 0x1, ctypes.byref(blob_out))
     if not ok:
-        raise OSError(f"DPAPI {'encrypt' if encrypt else 'decrypt'} failed "
-                      f"(error {ctypes.GetLastError()})")
+        raise OSError(
+            f"DPAPI {'encrypt' if encrypt else 'decrypt'} failed (error {ctypes.GetLastError()})"
+        )
     try:
         return ctypes.string_at(blob_out.pbData, blob_out.cbData)
     finally:
@@ -114,7 +120,7 @@ def _blob_path() -> Path:
         base = os.environ.get("XDG_CONFIG_HOME") or (Path.home() / ".config")
     d = Path(base) / SERVICE
     d.mkdir(parents=True, exist_ok=True)
-    return d / "key.dpapi"          # ciphertext only, never plaintext
+    return d / "key.dpapi"  # ciphertext only, never plaintext
 
 
 def from_env() -> tuple[str, str]:
@@ -139,20 +145,23 @@ def save(key: str) -> tuple[bool, str]:
         p.write_bytes(base64.b64encode(blob))
         return True, f"Saved, encrypted to your Windows account ({p})."
     if _mac_available():
-        rc, out = _run(["security", "add-generic-password", "-U",
-                        "-s", SERVICE, "-a", ACCOUNT, "-w", key])
+        rc, out = _run(
+            ["security", "add-generic-password", "-U", "-s", SERVICE, "-a", ACCOUNT, "-w", key]
+        )
         return (rc == 0), ("Saved to your macOS Keychain." if rc == 0 else f"Keychain error: {out}")
     if _linux_available():
-        rc, out = _run(["secret-tool", "store", "--label", SERVICE,
-                        "service", SERVICE, "account", ACCOUNT], stdin=key)
-        return (rc == 0), ("Saved to your keyring." if rc == 0
-                           else f"secret-tool error: {out}")
+        rc, out = _run(
+            ["secret-tool", "store", "--label", SERVICE, "service", SERVICE, "account", ACCOUNT],
+            stdin=key,
+        )
+        return (rc == 0), ("Saved to your keyring." if rc == 0 else f"secret-tool error: {out}")
     return False, (
         "No OS keystore is available on this system, so the key was NOT saved — "
         "writing it in plaintext would be worse than not saving it.\n\n"
         "Set an environment variable instead:\n"
         "    setx OPENROUTER_API_KEY sk-or-...        (Windows, then open a new shell)\n"
-        "    export OPENROUTER_API_KEY=sk-or-...      (macOS/Linux)")
+        "    export OPENROUTER_API_KEY=sk-or-...      (macOS/Linux)"
+    )
 
 
 def load() -> tuple[str, str]:
@@ -164,13 +173,13 @@ def load() -> tuple[str, str]:
         p = _blob_path()
         if p.exists():
             try:
-                return _dpapi(False, base64.b64decode(p.read_bytes())).decode(), \
-                    "Windows DPAPI (this user account)"
+                return _dpapi(
+                    False, base64.b64decode(p.read_bytes())
+                ).decode(), "Windows DPAPI (this user account)"
             except (OSError, ValueError):
                 return "", "stored key could not be decrypted (different user or machine?)"
     if _mac_available():
-        rc, out = _run(["security", "find-generic-password",
-                        "-s", SERVICE, "-a", ACCOUNT, "-w"])
+        rc, out = _run(["security", "find-generic-password", "-s", SERVICE, "-a", ACCOUNT, "-w"])
         if rc == 0 and out:
             return out, "macOS Keychain"
     if _linux_available():
@@ -185,7 +194,8 @@ def delete() -> tuple[bool, str]:
     p = _blob_path()
     if p.exists():
         try:
-            p.unlink(); msgs.append("removed the encrypted local blob")
+            p.unlink()
+            msgs.append("removed the encrypted local blob")
         except OSError as e:
             msgs.append(f"could not remove blob: {e}")
     if _mac_available():
@@ -229,6 +239,7 @@ def audit(repo_root: Path | None = None) -> list[str]:
     """Look for a key that leaked somewhere it must never be. Used by the GUI + tests."""
     problems = []
     from . import config
+
     cfg_p = config.config_path()
     if cfg_p.exists():
         try:
@@ -236,8 +247,9 @@ def audit(repo_root: Path | None = None) -> list[str]:
         except (OSError, json.JSONDecodeError):
             raw = {}
         if str(raw.get("api_key") or "").strip():
-            problems.append(f"PLAINTEXT KEY IN {cfg_p} — delete that field; "
-                            "this build never writes it.")
+            problems.append(
+                f"PLAINTEXT KEY IN {cfg_p} — delete that field; this build never writes it."
+            )
     root = repo_root or Path(__file__).resolve().parents[1]
     gi = root / ".gitignore"
     if not gi.exists():
@@ -251,20 +263,25 @@ def audit(repo_root: Path | None = None) -> list[str]:
 def main() -> int:
     """CLI:  python -m agentbrain.secrets [--status | --purge | --set]"""
     import argparse
+
     ap = argparse.ArgumentParser(description="Agent Brain key storage")
     ap.add_argument("--purge", action="store_true", help="delete the stored key")
     ap.add_argument("--set", action="store_true", help="store a key (prompts, no echo)")
     a = ap.parse_args()
 
     if a.purge:
-        print(purge_report()); return 0
+        print(purge_report())
+        return 0
     if a.set:
         import getpass
+
         if not can_store():
             print(f"No OS keystore here ({backend()}). Refusing to write plaintext.\n")
-            print(purge_report()); return 1
+            print(purge_report())
+            return 1
         ok, msg = save(getpass.getpass("Paste your API key (input hidden): "))
-        print(msg); return 0 if ok else 1
+        print(msg)
+        return 0 if ok else 1
 
     key, source = load()
     print(f"Backend : {backend()}")

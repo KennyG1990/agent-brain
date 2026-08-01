@@ -11,6 +11,7 @@ Linux   : systemd --user timer, falling back to crontab
 
 Every backend reports the exact command it ran, so nothing is installed invisibly.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -55,10 +56,27 @@ def install(vault: Path, hour: int = 3) -> tuple[bool, str]:
     argv, root = _cmd(vault)
     if sys.platform == "win32":
         inner = " ".join(f'"{a}"' if " " in a else a for a in argv)
-        ok, out = _run(["schtasks", "/Create", "/F", "/TN", TASK, "/SC", "DAILY",
-                        "/ST", f"{hour:02d}:00", "/TR", f'cmd /c set PYTHONPATH={root}&& {inner}'])
-        return ok, (f"Daily at {hour:02d}:00 via Task Scheduler ({TASK}).\n"
-                    f"Remove with: schtasks /Delete /TN {TASK} /F" if ok else out)
+        ok, out = _run(
+            [
+                "schtasks",
+                "/Create",
+                "/F",
+                "/TN",
+                TASK,
+                "/SC",
+                "DAILY",
+                "/ST",
+                f"{hour:02d}:00",
+                "/TR",
+                f"cmd /c set PYTHONPATH={root}&& {inner}",
+            ]
+        )
+        return ok, (
+            f"Daily at {hour:02d}:00 via Task Scheduler ({TASK}).\n"
+            f"Remove with: schtasks /Delete /TN {TASK} /F"
+            if ok
+            else out
+        )
 
     if sys.platform == "darwin":
         plist = Path.home() / "Library" / "LaunchAgents" / f"com.agentbrain.{TASK}.plist"
@@ -69,14 +87,16 @@ def install(vault: Path, hour: int = 3) -> tuple[bool, str]:
             '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
             '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
             '<plist version="1.0"><dict>\n'
-            f'  <key>Label</key><string>com.agentbrain.{TASK}</string>\n'
-            f'  <key>ProgramArguments</key><array>\n{args}  </array>\n'
-            f'  <key>EnvironmentVariables</key><dict>'
-            f'<key>PYTHONPATH</key><string>{root}</string></dict>\n'
-            f'  <key>StartCalendarInterval</key><dict>'
-            f'<key>Hour</key><integer>{hour}</integer>'
-            f'<key>Minute</key><integer>0</integer></dict>\n'
-            '</dict></plist>\n', encoding="utf-8")
+            f"  <key>Label</key><string>com.agentbrain.{TASK}</string>\n"
+            f"  <key>ProgramArguments</key><array>\n{args}  </array>\n"
+            f"  <key>EnvironmentVariables</key><dict>"
+            f"<key>PYTHONPATH</key><string>{root}</string></dict>\n"
+            f"  <key>StartCalendarInterval</key><dict>"
+            f"<key>Hour</key><integer>{hour}</integer>"
+            f"<key>Minute</key><integer>0</integer></dict>\n"
+            "</dict></plist>\n",
+            encoding="utf-8",
+        )
         _run(["launchctl", "unload", str(plist)])
         ok, out = _run(["launchctl", "load", str(plist)])
         return ok, (f"Daily at {hour:02d}:00 via launchd.\n{plist}" if ok else out)
@@ -87,15 +107,23 @@ def install(vault: Path, hour: int = 3) -> tuple[bool, str]:
         (d / f"{TASK}.service").write_text(
             f"[Unit]\nDescription=Agent Brain scan\n\n[Service]\nType=oneshot\n"
             f"Environment=PYTHONPATH={root}\n"
-            f"ExecStart={' '.join(argv)}\n", encoding="utf-8")
+            f"ExecStart={' '.join(argv)}\n",
+            encoding="utf-8",
+        )
         (d / f"{TASK}.timer").write_text(
             f"[Unit]\nDescription=Agent Brain daily scan\n\n[Timer]\n"
             f"OnCalendar=*-*-* {hour:02d}:00:00\nPersistent=true\n\n"
-            f"[Install]\nWantedBy=timers.target\n", encoding="utf-8")
+            f"[Install]\nWantedBy=timers.target\n",
+            encoding="utf-8",
+        )
         _run(["systemctl", "--user", "daemon-reload"])
         ok, out = _run(["systemctl", "--user", "enable", "--now", f"{TASK}.timer"])
-        return ok, (f"Daily at {hour:02d}:00 via systemd --user.\n"
-                    f"Remove with: systemctl --user disable --now {TASK}.timer" if ok else out)
+        return ok, (
+            f"Daily at {hour:02d}:00 via systemd --user.\n"
+            f"Remove with: systemctl --user disable --now {TASK}.timer"
+            if ok
+            else out
+        )
 
     if shutil.which("crontab"):
         ok, cur = _run(["crontab", "-l"])
@@ -104,9 +132,11 @@ def install(vault: Path, hour: int = 3) -> tuple[bool, str]:
         ok, out = _run(["crontab", "-"], stdin="\n".join(lines) + "\n")
         return ok, (f"Daily at {hour:02d}:00 via crontab." if ok else out)
 
-    return False, ("No scheduler found on this system. Run the scan manually, or wire "
-                   f"this command into whatever you use:\n  PYTHONPATH={root} "
-                   f"{' '.join(argv)}")
+    return False, (
+        "No scheduler found on this system. Run the scan manually, or wire "
+        f"this command into whatever you use:\n  PYTHONPATH={root} "
+        f"{' '.join(argv)}"
+    )
 
 
 def uninstall() -> tuple[bool, str]:
@@ -149,7 +179,9 @@ def status() -> tuple[bool, str]:
 
 def main() -> int:
     import argparse
+
     from . import config
+
     ap = argparse.ArgumentParser(description="Schedule the (free, local) Agent Brain scan")
     ap.add_argument("action", choices=["install", "uninstall", "status"])
     ap.add_argument("--hour", type=int, default=3)
